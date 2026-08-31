@@ -3,9 +3,15 @@ const { submissionSchema } = require('./submissions.schema');
 
 async function createSubmission(req, res) {
   try {
-    // 1. Honeypot check — if filled by bot, silently return 200 fake success
+    // 1. Honeypot check — if filled by bot (any truthy, non-empty string/number/boolean), silently return 200
     const rawHoneypot = req.body?.honeypot;
-    if (rawHoneypot && typeof rawHoneypot === 'string' && rawHoneypot.trim().length > 0) {
+    const isBot =
+      rawHoneypot !== undefined &&
+      rawHoneypot !== null &&
+      rawHoneypot !== false &&
+      String(rawHoneypot).trim().length > 0;
+
+    if (isBot) {
       return res.status(200).json({
         success: true,
         message: 'Submission received'
@@ -23,14 +29,19 @@ async function createSubmission(req, res) {
 
     const { widget_id, data } = parsed.data;
 
-    // Extract real client IP (handling proxies, load balancers, and testing headers)
+    // Extract real client IP (handling proxies, arrays, testing headers, sockets)
+    const forwardedHeader = req.headers['x-forwarded-for'];
+    const forwardedFirst = Array.isArray(forwardedHeader)
+      ? forwardedHeader[0]
+      : forwardedHeader;
+
     const ip =
       req.headers['x-mock-ip'] ||
-      req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
-      req.socket.remoteAddress;
+      forwardedFirst?.split(',')[0]?.trim() ||
+      req.socket?.remoteAddress;
 
-    // 3 & 4. Verify widget exists and create submission
-    const submission = await submissionsService.createSubmission(widget_id, data, ip);
+    // 3 & 4. Verify widget exists and create submission (normalizing widget_id)
+    const submission = await submissionsService.createSubmission(widget_id.toLowerCase(), data, ip);
 
     // 5. Return 201 Created
     return res.status(201).json({

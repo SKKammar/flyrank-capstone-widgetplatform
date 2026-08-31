@@ -7,7 +7,7 @@ const submissionSchema = z.object({
     .refine((obj) => Object.keys(obj).length <= 20, {
       message: 'Submissions can have at most 20 fields'
     }),
-  honeypot: z.string().max(0).optional()
+  honeypot: z.string().max(0).optional().nullable()
 });
 
 module.exports = { submissionSchema };

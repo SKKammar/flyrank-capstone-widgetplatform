@@ -4,12 +4,22 @@ const { v4: uuidv4 } = require('uuid');
 const db = require('../../config/db');
 const env = require('../../config/env');
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 async function register(email, password) {
-  if (!email || !password) {
-    throw new Error('Email and password are required');
+  if (!email || typeof email !== 'string' || !email.trim()) {
+    throw new Error('Email is required');
   }
 
   const normalizedEmail = email.toLowerCase().trim();
+  if (!EMAIL_REGEX.test(normalizedEmail)) {
+    throw new Error('Invalid email format');
+  }
+
+  if (!password || typeof password !== 'string' || password.length < 6) {
+    throw new Error('Password must be at least 6 characters long');
+  }
+
   const existing = await db('users').where({ email: normalizedEmail }).first();
   if (existing) {
     throw new Error('Email already in use');

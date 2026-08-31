@@ -5,6 +5,9 @@ const { configureRoutes } = require('./config/routes');
 
 const app = express();
 
+// Trust reverse proxy headers (e.g. Nginx, Cloudflare, load balancers)
+app.set('trust proxy', 1);
+
 // 1. Configure app-level middleware (CORS preflight, global headers)
 configureAppMiddleware(app);
 

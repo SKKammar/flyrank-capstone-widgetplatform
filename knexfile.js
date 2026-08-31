@@ -5,6 +5,12 @@ module.exports = {
     client: 'better-sqlite3',
     connection: { filename: process.env.DB_FILENAME || './dev.sqlite' },
     useNullAsDefault: true,
+    pool: {
+      afterCreate: (conn, cb) => {
+        conn.pragma('foreign_keys = ON');
+        cb();
+      }
+    },
     migrations: { directory: './src/db/migrations' },
     seeds: { directory: './src/db/seeds' }
   },

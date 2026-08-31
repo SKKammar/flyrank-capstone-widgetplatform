@@ -168,27 +168,93 @@ async function runTests() {
     console.log('✓ Probe 5 (Side effect fire-and-forget) passed');
 
     // -------------------------------------------------------------
-    // 7. PROBE 6: Honeypot Protection
+    // 7. PROBE 6: Honeypot Protection & Edge Cases
     // -------------------------------------------------------------
-    console.log('\n[TEST 7] Probe 6: Honeypot Protection');
+    console.log('\n[TEST 7] Probe 6: Honeypot Protection (Strings, Booleans, Nulls)');
     const countBefore = await db('submissions').count('id as count').first();
-    const botRes = await fetch(`${baseUrl}/api/submissions`, {
+    
+    // Case A: String bot honeypot
+    const botRes1 = await fetch(`${baseUrl}/api/submissions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         widget_id: userAWidgetId,
-        data: { email: 'bot@spam.com' },
+        data: { email: 'bot1@spam.com' },
         honeypot: 'bot filled this'
       })
     });
-    assert.strictEqual(botRes.status, 200, 'Honeypot trigger should return 200 silent success to trap bot');
+    assert.strictEqual(botRes1.status, 200, 'Honeypot string trigger should return 200 silent success');
+
+    // Case B: Non-string truthy honeypot (type-juggling defense)
+    const botRes2 = await fetch(`${baseUrl}/api/submissions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        widget_id: userAWidgetId,
+        data: { email: 'bot2@spam.com' },
+        honeypot: '1'
+      })
+    });
+    assert.strictEqual(botRes2.status, 200, 'Truthy honeypot trigger should return 200 silent success');
+
+    // Case C: Legitimate submission with honeypot explicitly null
+    const legitNullRes = await fetch(`${baseUrl}/api/submissions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        widget_id: userAWidgetId,
+        data: { email: 'legit_null@example.com' },
+        honeypot: null
+      })
+    });
+    assert.strictEqual(legitNullRes.status, 201, 'Honeypot: null should be accepted as legitimate');
+
     const countAfter = await db('submissions').count('id as count').first();
     assert.strictEqual(
       Number(countAfter.count),
-      Number(countBefore.count),
-      'Honeypot submission must NOT be stored in database'
+      Number(countBefore.count) + 1,
+      'Only the legitimate null-honeypot submission should be stored in database'
     );
-    console.log('✓ Probe 6 (Honeypot trap) passed');
+    console.log('✓ Probe 6 (Honeypot trap & edge cases) passed');
+
+    // -------------------------------------------------------------
+    // EDGE CASES: Auth & Widget Schema Hardening
+    // -------------------------------------------------------------
+    console.log('\n[TEST 7.1] Edge Cases: Auth Validation & Duplicate Field Protection');
+    // Auth: Invalid email format
+    const badEmailRes = await fetch(`${baseUrl}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'not-an-email', password: 'ValidPassword123!' })
+    });
+    assert.strictEqual(badEmailRes.status, 400, 'Bad email format should return 400');
+
+    // Auth: Short password
+    const shortPassRes = await fetch(`${baseUrl}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'valid_email@test.com', password: '123' })
+    });
+    assert.strictEqual(shortPassRes.status, 400, 'Short password should return 400');
+
+    // Widgets: Duplicate field names rejected
+    const dupFieldRes = await fetch(`${baseUrl}/api/widgets`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${tokenA}`
+      },
+      body: JSON.stringify({
+        title: 'Widget with Dupes',
+        type: 'signup_form',
+        fields: [
+          { name: 'email', type: 'email' },
+          { name: 'email', type: 'text' }
+        ]
+      })
+    });
+    assert.strictEqual(dupFieldRes.status, 400, 'Duplicate field names must be rejected');
+    console.log('✓ Edge cases (Auth & duplicate fields) passed');
 
     // -------------------------------------------------------------
     // 8. DASHBOARD ANALYTICS & STATS (Tenant Isolated)

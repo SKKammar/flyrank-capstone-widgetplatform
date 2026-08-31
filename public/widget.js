@@ -160,43 +160,59 @@
       console.error('[FlyRank Widget] Load error:', err);
     });
 
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
   function renderWidget(config) {
     let fieldsHtml = '';
     const fields = Array.isArray(config.fields) ? config.fields : [];
 
     fields.forEach(function(field) {
-      const fieldId = 'flyrank-f-' + field.name + '-' + widgetId;
+      const safeName = escapeHtml(field.name);
+      const safeType = escapeHtml(field.type || 'text');
+      const fieldId = 'flyrank-f-' + safeName + '-' + escapeHtml(widgetId);
       const isReq = field.required ? 'required' : '';
       const reqMark = field.required ? ' <span style="color:#ef4444">*</span>' : '';
 
       if (field.type === 'textarea') {
         fieldsHtml += `
           <div class="flyrank-form-group">
-            <label class="flyrank-form-label" for="${fieldId}">${field.name}${reqMark}</label>
-            <textarea class="flyrank-form-textarea" id="${fieldId}" name="${field.name}" ${isReq}></textarea>
+            <label class="flyrank-form-label" for="${fieldId}">${safeName}${reqMark}</label>
+            <textarea class="flyrank-form-textarea" id="${fieldId}" name="${safeName}" ${isReq}></textarea>
           </div>
         `;
       } else {
         fieldsHtml += `
           <div class="flyrank-form-group">
-            <label class="flyrank-form-label" for="${fieldId}">${field.name}${reqMark}</label>
-            <input class="flyrank-form-input" type="${field.type || 'text'}" id="${fieldId}" name="${field.name}" ${isReq} />
+            <label class="flyrank-form-label" for="${fieldId}">${safeName}${reqMark}</label>
+            <input class="flyrank-form-input" type="${safeType}" id="${fieldId}" name="${safeName}" ${isReq} />
           </div>
         `;
       }
     });
 
+    const safeTitle = escapeHtml(config.title || 'Get In Touch');
+    const safeDesc = config.description ? `<p class="flyrank-widget-desc">${escapeHtml(config.description)}</p>` : '';
+    const safeBtn = escapeHtml(config.button_text || 'Submit');
+
     container.innerHTML = `
-      <h3 class="flyrank-widget-title">${config.title || 'Get In Touch'}</h3>
-      ${config.description ? `<p class="flyrank-widget-desc">${config.description}</p>` : ''}
-      <form class="flyrank-form" id="flyrank-form-${widgetId}">
+      <h3 class="flyrank-widget-title">${safeTitle}</h3>
+      ${safeDesc}
+      <form class="flyrank-form" id="flyrank-form-${escapeHtml(widgetId)}">
         <!-- Honeypot trap field (hidden from real users, bots fill this) -->
         <input type="text" name="honeypot" style="display:none !important; position:absolute; left:-9999px;" tabindex="-1" autocomplete="off" />
         ${fieldsHtml}
-        <button type="submit" class="flyrank-submit-btn" id="flyrank-btn-${widgetId}">
-          ${config.button_text || 'Submit'}
+        <button type="submit" class="flyrank-submit-btn" id="flyrank-btn-${escapeHtml(widgetId)}">
+          ${safeBtn}
         </button>
-        <div class="flyrank-message" id="flyrank-msg-${widgetId}"></div>
+        <div class="flyrank-message" id="flyrank-msg-${escapeHtml(widgetId)}"></div>
       </form>
     `;
 
