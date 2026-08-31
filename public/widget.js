@@ -47,19 +47,63 @@
   style.textContent = `
     .flyrank-widget-root {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      max-width: 440px;
-      margin: 0 auto;
-      padding: 32px;
+      width: 360px;
+      max-width: calc(100vw - 48px);
+      padding: 24px;
       background: #ffffff;
       border: 1px solid #f1f5f9;
       border-radius: 16px;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(15, 23, 42, 0.05);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(15, 23, 42, 0.05);
       color: #0f172a;
       box-sizing: border-box;
-      transition: box-shadow 0.3s ease;
+      
+      /* Floating Popover Styles */
+      position: fixed;
+      bottom: 96px;
+      right: 24px;
+      z-index: 2147483647; /* Max z-index */
+      opacity: 0;
+      transform: translateY(20px) scale(0.95);
+      pointer-events: none;
+      transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      transform-origin: bottom right;
     }
-    .flyrank-widget-root:hover {
-      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(15, 23, 42, 0.05);
+    .flyrank-widget-root.flyrank-open {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+    .flyrank-launcher {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 56px;
+      height: 56px;
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      border-radius: 50%;
+      box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3), 0 4px 6px -4px rgba(37, 99, 235, 0.3);
+      cursor: pointer;
+      z-index: 2147483647;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;
+    }
+    .flyrank-launcher:hover {
+      transform: scale(1.05);
+      box-shadow: 0 20px 25px -5px rgba(37, 99, 235, 0.4), 0 8px 10px -6px rgba(37, 99, 235, 0.4);
+    }
+    .flyrank-launcher:active {
+      transform: scale(0.95);
+    }
+    .flyrank-icon {
+      fill: white;
+      width: 24px;
+      height: 24px;
+      transition: transform 0.3s ease;
+    }
+    .flyrank-launcher.flyrank-open .flyrank-icon {
+      transform: rotate(90deg);
     }
     .flyrank-widget-root * {
       box-sizing: border-box;
@@ -269,11 +313,45 @@
       </form>
     `;
 
-    // Insert container into DOM right after script tag or into body
-    if (scriptTag.parentNode) {
-      scriptTag.parentNode.insertBefore(container, scriptTag.nextSibling);
-    } else {
-      document.body.appendChild(container);
+    // Floating popover always attaches to body
+    document.body.appendChild(container);
+
+    // Create Launcher Button
+    const launcherId = 'flyrank-launcher-' + widgetId;
+    let launcher = document.getElementById(launcherId);
+    if (!launcher) {
+      launcher = document.createElement('div');
+      launcher.id = launcherId;
+      launcher.className = 'flyrank-launcher';
+      
+      // Default SVG icon (Chat bubble)
+      launcher.innerHTML = \`
+        <svg class="flyrank-icon flyrank-icon-chat" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"></path>
+        </svg>
+      \`;
+      document.body.appendChild(launcher);
+
+      launcher.addEventListener('click', function() {
+        const isOpen = container.classList.contains('flyrank-open');
+        if (isOpen) {
+          container.classList.remove('flyrank-open');
+          launcher.classList.remove('flyrank-open');
+          launcher.innerHTML = \`
+            <svg class="flyrank-icon flyrank-icon-chat" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"></path>
+            </svg>
+          \`;
+        } else {
+          container.classList.add('flyrank-open');
+          launcher.classList.add('flyrank-open');
+          launcher.innerHTML = \`
+            <svg class="flyrank-icon flyrank-icon-close" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path>
+            </svg>
+          \`;
+        }
+      });
     }
 
     const form = document.getElementById('flyrank-form-' + widgetId);
