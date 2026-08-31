@@ -113,8 +113,6 @@ flyrank-capstone-widgetplatform/
 │   └── probes.test.js                # Automated test runner covering all 6 probes
 ├── knexfile.js                       # Knex SQLite & Postgres configuration
 ├── capstone.yaml                     # Evaluation specification
-├── BUILDLOG.md                       # Session logs and reflections
-├── EVIDENCE.md                       # Pre-filled checklist and probe verification
 └── index.js                          # Server entry point
 ```
 
@@ -164,6 +162,9 @@ When transitioning from SQLite development to PostgreSQL production:
    - SQLite stores booleans as `0` or `1`, whereas PostgreSQL uses native `boolean` (`true`/`false`).
 3. **JSON Fields**:
    - Knex handles JSON columns transparently, but PostgreSQL uses native `jsonb` indexing while SQLite stores stringified JSON. The codebase safely parses both string and object forms.
+4. **Production Architectural Details**:
+   - **Connection Pooling**: `knexfile.js` configures pool sizes `min: 2, max: 10` for PostgreSQL.
+   - **SSL Handling**: Supports self-signed and cloud certificates automatically when `DB_SSL=true` or when SSL is enabled in `DATABASE_URL`.
 
 ---
 
@@ -210,6 +211,46 @@ npm run dev
 ```bash
 npm test
 ```
+
+---
+
+## Deployment Guide (Render, Railway, Docker)
+
+### Option A: Local PostgreSQL via Docker Compose
+
+The easiest way to run the platform locally with PostgreSQL is using Docker Compose:
+
+```bash
+docker compose up --build
+```
+This starts a PostgreSQL 16 database on port `5432` and the Node.js API on port `3000`, automatically running Knex migrations and seeding tenant data. Stop it via `docker compose down`.
+
+### Option B: Deploy to Render.com (Recommended)
+
+1. **Log into [Render Dashboard](https://dashboard.render.com)**.
+2. **Create a PostgreSQL Database** named `flyrank-db` and copy the **Internal Database URL**.
+3. **Create a Web Service** connecting this repository.
+   - **Environment**: `Node`
+   - **Build Command**: `npm install && npm run migrate`
+   - **Start Command**: `npm start`
+4. **Set Environment Variables**:
+   - `NODE_ENV`: `production`
+   - `DATABASE_URL`: *(paste Internal Database URL)*
+   - `DB_SSL`: `true`
+   - `JWT_SECRET`: *(your secure 32+ char secret)*
+   - `BASE_URL`: `https://your-app-name.onrender.com`
+
+### Option C: Deploy to Railway.app
+
+1. Go to [Railway.app](https://railway.app) $\rightarrow$ **New Project** $\rightarrow$ **Deploy from GitHub repo**.
+2. Add a **PostgreSQL** database service to the canvas.
+3. In Web Service settings, add environment variables:
+   - `DATABASE_URL`: `${{Postgres.DATABASE_URL}}`
+   - `NODE_ENV`: `production`
+   - `JWT_SECRET`: *(your 64-character secret)*
+   - `BASE_URL`: `https://${{RAILWAY_PUBLIC_DOMAIN}}`
+4. Set **Build Command**: `npm install && npm run migrate`
+5. Set **Start Command**: `npm start`
 
 ---
 
