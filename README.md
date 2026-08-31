@@ -252,6 +252,20 @@ This starts a PostgreSQL 16 database on port `5432` and the Node.js API on port 
 4. Set **Build Command**: `npm install && npm run migrate`
 5. Set **Start Command**: `npm start`
 
+### Option D: Deploy the Admin Dashboard (Frontend) to Vercel
+
+Since the frontend is a static Vite application, it should be deployed separately from your backend API for maximum performance.
+
+1. Create a free account on **[Vercel](https://vercel.com/)**.
+2. Click **Add New** $\rightarrow$ **Project** and import this repository.
+3. In the "Configure Project" step:
+   - Expand the **Framework Preset** dropdown and ensure **Vite** is selected.
+   - **CRITICAL STEP**: Edit the **Root Directory**. Click the Edit button and select the `admin-dashboard` folder (since the frontend code lives there, not in the root).
+4. Expand the **Environment Variables** section and add:
+   - **Name**: `VITE_API_BASE`
+   - **Value**: `https://your-backend-app-name.onrender.com` *(Replace this with your actual live Render URL, do NOT include `/api` at the end).*
+5. Click **Deploy**. Vercel will build the frontend and give you a live URL where you can manage your widgets globally!
+
 ---
 
 ## Seed Credentials & Demo Data
