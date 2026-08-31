@@ -1,5 +1,4 @@
 const cors = require('cors');
-const express = require('express');
 
 // Open CORS for public widget scripts and cross-origin form submissions
 const publicCors = cors({
