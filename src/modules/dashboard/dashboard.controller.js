@@ -99,17 +99,22 @@ async function getStats(req, res) {
       count: Number(r.count)
     }));
 
-    // 4. Submissions in last 7 days grouped by date
+    // 4. Submissions in last 7 days grouped by date (Dialect-portable: SQLite vs Postgres)
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const sevenDaysAgoIso = sevenDaysAgo.toISOString();
+
+    const isPostgres = db.client && db.client.config && db.client.config.client === 'pg';
+    const dateExpression = isPostgres
+      ? "to_char(s.created_at, 'YYYY-MM-DD')"
+      : "strftime('%Y-%m-%d', s.created_at)";
 
     const byDateRows = await db('submissions as s')
       .join('widgets as w', 's.widget_id', 'w.id')
       .where('w.user_id', userId)
       .where('s.created_at', '>=', sevenDaysAgoIso)
-      .select(db.raw("date(s.created_at) as date, count(s.id) as count"))
-      .groupByRaw("date(s.created_at)")
+      .select(db.raw(`${dateExpression} as date, count(s.id) as count`))
+      .groupByRaw(dateExpression)
       .orderBy('date', 'asc');
 
     const last7Days = byDateRows.map((r) => ({

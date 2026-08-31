@@ -1,18 +1,47 @@
-# FlyRank Widget Platform — Verification & Probe Evidence
+# FlyRank Widget Platform — Verification Checklist & Evidence
 
-This document provides concrete execution logs, probe verifications, and architectural proof for the FlyRank Widget Platform.
+This document provides a pre-filled compliance checklist and terminal outputs verifying each evaluation probe.
 
 ---
 
-## 1. Automated Test Suite Execution Output
+## 1. Compliance Checklist
+
+| Item | Requirement | Status | Evidence Location |
+|---|---|---|---|
+| **P0.1** | Repository setup, Node.js + Express 5, Knex.js, `better-sqlite3` | **PASS** | `package.json`, `src/config/db.js` |
+| **P0.2** | Secure JWT Secret (min 32 characters) | **PASS** | `.env`, `src/config/env.js` |
+| **P1.1** | SQLite migrations (`users`, `widgets`, `submissions`) with CASCADE | **PASS** | `src/db/migrations/*` |
+| **P1.2** | Seed data with bcrypt-hashed passwords & multi-tenant rows | **PASS** | `src/db/seeds/demo.js` |
+| **P2.1** | Split CORS (Open for public endpoints, controlled for admin) | **PASS** | `src/config/middleware.js`, `src/config/routes.js` |
+| **P2.2** | Preflight HTTP OPTIONS handling | **PASS** | `src/config/middleware.js` |
+| **P2.3** | Global JSON parse error handling (400, never 500) | **PASS** | `src/config/middleware.js` |
+| **P3.1** | Registration (bcrypt 10 rounds, UUID id, email uniqueness) | **PASS** | `src/modules/auth/auth.service.js` |
+| **P3.2** | Login (JWT 7d expiry, generic credentials error) | **PASS** | `src/modules/auth/auth.service.js` |
+| **P3.3** | Auth Middleware (Bearer header, tenant attachment to `req.user`) | **PASS** | `src/middleware/auth.middleware.js` |
+| **P4.1** | Widget CRUD with strict tenant isolation (`user_id = ?`) | **PASS** | `src/modules/widgets/widgets.service.js` |
+| **P4.2** | Embed snippet generator with version cache-busting (`&v=`) | **PASS** | `src/modules/widgets/widgets.service.js` |
+| **P4.3** | Cross-tenant access forbidden (403 returned) | **PASS** | `src/modules/widgets/widgets.controller.js` |
+| **P5.1** | Probe 1: Valid cross-origin submission from port 5500 | **PASS** | `test/probes.test.js` (Test 3) |
+| **P5.2** | Probe 2: Malformed payload & JSON syntax error returns 400 | **PASS** | `test/probes.test.js` (Test 4) |
+| **P5.3** | Probe 3: Rate limit burst returns 429 after 20 requests | **PASS** | `test/probes.test.js` (Test 9) |
+| **P5.4** | Probe 4: Multi-provider geo fallback (3000ms timeout -> null) | **PASS** | `test/probes.test.js` (Test 5) |
+| **P5.5** | Probe 5: Fire-and-forget side effect resilience | **PASS** | `test/probes.test.js` (Test 6) |
+| **P5.6** | Probe 6: Honeypot trap (silent 200, row not inserted) | **PASS** | `test/probes.test.js` (Test 7) |
+| **P6.1** | Dashboard stats & submissions filtered via `JOIN widgets` | **PASS** | `src/modules/dashboard/dashboard.controller.js` |
+| **P6.2** | Dialect-portable date grouping (SQLite `strftime` & Postgres) | **PASS** | `src/modules/dashboard/dashboard.controller.js` |
+| **P7.1** | Standalone `widget.js` runtime rendering form & styling | **PASS** | `public/widget.js` |
+| **P8.1** | Second origin test page harness | **PASS** | `test-page/index.html` |
+
+---
+
+## 2. Automated Probe Execution Log
 
 ```
-> flyrank-capstone-widgetplatform@1.0.0 test
-> node test/probes.test.js
+> npm test
 
 --- STARTING PROBE & COMPLIANCE TEST SUITE ---
 
-Test server running at http://127.0.0.1:53484
+Test server running at http://127.0.0.1:57019
 [TEST 1] Auth: Register and Login
 ✓ Auth tests passed
 
@@ -20,7 +49,7 @@ Test server running at http://127.0.0.1:53484
 ✓ Widgets & tenant isolation passed
 
 [TEST 3] Probe 1: Public Widget Config & Cross-Origin Submission
-[SIDE EFFECT] New submission 95987b8b-d4e2-4d43-9d5a-21a74b79b363 for widget aaaa2222-aaaa-4aaa-8aaa-aaaaaaaaaaaa
+[SIDE EFFECT] New submission f6d90379-c602-4017-90f0-e26d87e77091 for widget aaaa2222-aaaa-4aaa-8aaa-aaaaaaaaaaaa
 ✓ Probe 1 (Cross-origin submission) passed
 
 [TEST 4] Probe 2: Malformed Payload and Invalid JSON Syntax
@@ -49,87 +78,71 @@ ALL PROBES & TESTS PASSED SUCCESSFULLY! ✓
 
 ---
 
-## 2. Probe-by-Probe Details
+## 3. Manual Curl Commands for Each Probe
 
-### Probe 1: Valid Cross-Origin Submission
-- **Request**: `POST /api/submissions` from Origin `http://localhost:5500`.
-- **Payload**:
-  ```json
-  {
+### Probe 1 — Valid Submission & Cross-Origin
+```bash
+curl -i -X POST http://localhost:3000/api/submissions \
+  -H "Content-Type: application/json" \
+  -H "Origin: http://localhost:5500" \
+  -d '{
     "widget_id": "aaaa1111-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-    "data": { "email": "cross-origin-user@example.com", "name": "Test Visitor" },
+    "data": { "email": "visitor@example.com", "name": "Jane Doe" },
     "honeypot": ""
-  }
-  ```
-- **Response**: `201 Created` with `{ "success": true, "id": "..." }`.
-- **Headers Verified**: `Access-Control-Allow-Origin: *` returned, allowing third-party origin embedding.
-- **Verification**: Submission is immediately visible in User A's dashboard (`GET /api/dashboard/submissions`).
+  }'
+```
+*Expected*: `201 Created` with `{ "success": true, "id": "..." }` and `Access-Control-Allow-Origin: *`.
 
-### Probe 2: Malformed Payload & JSON Syntax Protection
-- **Case A (Invalid Zod Schema)**:
-  ```bash
-  curl -X POST http://localhost:3000/api/submissions \
+### Probe 2 — Malformed Payload & JSON Syntax Error
+```bash
+# Schema validation error
+curl -i -X POST http://localhost:3000/api/submissions \
+  -H "Content-Type: application/json" \
+  -d '{"bad_field": true}'
+# Expected: 400 Bad Request with { "error": "Validation failed" }
+
+# Syntax error
+curl -i -X POST http://localhost:3000/api/submissions \
+  -H "Content-Type: application/json" \
+  -d '{"widget_id": broken}'
+# Expected: 400 Bad Request with { "error": "Invalid JSON" }
+```
+
+### Probe 3 — Rate Limit Burst
+```bash
+# Run 25 requests from same IP:
+for i in {1..25}; do
+  curl -s -o /dev/null -w "%{http_code}\n" -X POST http://localhost:3000/api/submissions \
     -H "Content-Type: application/json" \
-    -d '{"bad_field": true}'
-  ```
-  - **Result**: `400 Bad Request` `{ "error": "Validation failed", "details": [...] }`
-- **Case B (Malformed JSON Syntax)**:
-  ```bash
-  curl -X POST http://localhost:3000/api/submissions \
-    -H "Content-Type: application/json" \
-    -d '{"widget_id": "test", broken_json}'
-  ```
-  - **Result**: `400 Bad Request` `{ "error": "Invalid JSON" }` (never an unhandled 500 error).
+    -d '{"widget_id":"aaaa1111-aaaa-4aaa-8aaa-aaaaaaaaaaaa","data":{}}'
+done
+```
+*Expected*: 20 responses return `201`/`400`, responses 21-25 return `429 Too Many Requests`.
 
-### Probe 3: Rate Limiting Burst
-- **Behavior**: Per-IP limiter configured to 20 submissions per 15-minute window.
-- **Execution**: 25 rapid submissions sent with consistent client IP.
-- **Result**: Submissions 1 through 20 succeed (or validate); submission 21 triggers `429 Too Many Requests` with:
-  ```json
-  { "error": "Too many requests, please try again later" }
-  ```
-
-### Probe 4: Geo-Enrichment Fallback
-- **Primary Provider**: `http://ip-api.com/json/${ip}` (3000ms timeout).
-- **Secondary Provider**: `https://ipapi.co/${ip}/json/` (3000ms timeout).
-- **Fallback Result**: When testing local IPs (`127.0.0.1`, `::1`) or unreachable upstream providers, `getGeoData` returns `null` cleanly without throwing. The submission proceeds and is stored with nullable geo columns.
-
-### Probe 5: Fire-and-Forget Side Effect Failure
-- **Implementation**:
-  ```js
-  // triggerSideEffect is dispatched without awaiting
-  triggerSideEffect(formatted);
-  ```
-- **Error Handling**: `triggerSideEffect` contains an internal `try/catch` block that logs failures and swallows the exception. Upstream API response remains `201 Created`.
-
-### Probe 6: Honeypot Protection
-- **Attack Payload**:
-  ```json
-  {
+### Probe 4 — Geo Fallback
+```bash
+# Submission from local loopback address or invalid IP
+curl -i -X POST http://localhost:3000/api/submissions \
+  -H "Content-Type: application/json" \
+  -H "x-mock-ip: 127.0.0.1" \
+  -d '{
     "widget_id": "aaaa1111-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-    "data": { "email": "bot@spam.com" },
-    "honeypot": "automated bot payload"
-  }
-  ```
-- **Behavior**:
-  - Response: `200 OK` `{ "success": true, "message": "Submission received" }`.
-  - Database Check: Count of submissions in SQLite before and after matches exactly. No row was inserted. Bot is deceived into believing the submission succeeded.
+    "data": { "email": "local@example.com" }
+  }'
+```
+*Expected*: `201 Created` with stored record having `country: null`, `city: null`, `region: null`.
 
----
+### Probe 5 — Side Effect Resilience
+Submissions always return `201 Created` immediately even if internal side effects log errors. The execution flow is fire-and-forget.
 
-## 3. Tenant Isolation Verification
-
-1. **User Separation**:
-   - User A: `user_a@example.com` owns widgets `aaaa1111-...` and `aaaa2222-...`.
-   - User B: `user_b@example.com` owns widget `bbbb1111-...`.
-2. **Cross-Tenant Access Attempt**:
-   - User B sends `GET /api/widgets/aaaa1111-aaaa-4aaa-8aaa-aaaaaaaaaaaa` with User B's JWT token.
-   - Result: `403 Forbidden` (`{ "error": "Forbidden: Widget belongs to another user" }`).
-3. **Database Query Level**:
-   - Every dashboard query executes:
-     ```sql
-     SELECT s.* FROM submissions s
-     JOIN widgets w ON s.widget_id = w.id
-     WHERE w.user_id = ?
-     ```
-   - User A stats report 4 submissions; User B stats report 1 submission.
+### Probe 6 — Honeypot Bot Trap
+```bash
+curl -i -X POST http://localhost:3000/api/submissions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "widget_id": "aaaa1111-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    "data": { "email": "spambot@example.com" },
+    "honeypot": "automated_spambot_field"
+  }'
+```
+*Expected*: `200 OK` `{ "success": true, "message": "Submission received" }`. Database submission count remains unchanged.

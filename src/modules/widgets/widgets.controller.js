@@ -50,10 +50,10 @@ async function deleteWidget(req, res) {
 async function getEmbedSnippet(req, res) {
   try {
     // Verify widget exists and user owns it
-    await widgetsService.getWidgetById(req.params.id, req.user.userId);
-    const snippet = widgetsService.generateEmbedSnippet(req.params.id);
+    const widget = await widgetsService.getWidgetById(req.params.id, req.user.userId);
+    const snippet = widgetsService.generateEmbedSnippet(req.params.id, widget.version || 1);
     if (req.query.format === 'json') {
-      return res.status(200).json({ snippet });
+      return res.status(200).json({ snippet, version: widget.version || 1 });
     }
     return res.status(200).send(snippet);
   } catch (err) {

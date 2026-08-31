@@ -24,6 +24,7 @@
   }
 
   const widgetId = scriptUrl.searchParams.get('id') || window.__FLYRANK_WIDGET_ID__;
+  const widgetVersion = scriptUrl.searchParams.get('v');
   const apiBase = scriptUrl.origin;
 
   if (!widgetId) {
@@ -143,8 +144,9 @@
   `;
   document.head.appendChild(style);
 
-  // Fetch widget configuration
-  fetch(apiBase + '/api/submissions/config/' + widgetId)
+  // Fetch widget configuration with version cache busting if present
+  const configEndpoint = apiBase + '/api/submissions/config/' + widgetId + (widgetVersion ? '?v=' + encodeURIComponent(widgetVersion) : '');
+  fetch(configEndpoint)
     .then(function(res) {
       if (!res.ok) {
         throw new Error('Failed to load widget config (' + res.status + ')');

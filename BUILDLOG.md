@@ -1,88 +1,59 @@
 # FlyRank Widget Platform — Build Log
 
-## Phase 0: Project Setup & Dependencies
-- Initialized git repository.
-- Created `package.json` with scripts: `start`, `dev`, `migrate`, `seed`, `test`.
-- Installed dependencies: `express`, `knex`, `better-sqlite3`, `jsonwebtoken`, `bcrypt`, `zod`, `cors`, `express-rate-limit`, `uuid`, `dotenv`.
-- Installed dev dependency: `nodemon`.
-- Created `.gitignore`, `.env`, and `.env.example`.
+## Session 1 — August 31, 2026
 
-## Phase 1: Database Setup & Migrations
-- Configured `knexfile.js` with SQLite (`better-sqlite3`) and `useNullAsDefault: true`.
-- Created database connection in `src/config/db.js`.
-- Created Knex migrations:
-  1. `create_users`: UUID primary key, unique email, password hash, created_at timestamp.
-  2. `create_widgets`: UUID primary key, foreign key `user_id` referencing `users(id)` with CASCADE delete, JSON fields & display options, version counter, timestamps, index on `user_id`.
-  3. `create_submissions`: UUID primary key, foreign key `widget_id` referencing `widgets(id)` with CASCADE delete, JSON submission data, geo fields (`country`, `city`, `region`), IP address, honeypot trigger boolean, created_at timestamp, indexes on `widget_id` and `created_at`.
-- Executed migrations via `npx knex migrate:latest` (Batch 1: 3 migrations run successfully).
+### What I built
+- **Core Architecture & Setup**: Initialized Node.js + Express 5 application with Knex.js, SQLite (`better-sqlite3`), bcrypt, jsonwebtoken, zod, cors, and express-rate-limit.
+- **Database Migrations & Seeds**:
+  - `create_users`: UUID PK, unique email, bcrypt password hash.
+  - `create_widgets`: UUID PK, foreign key to users with CASCADE delete, JSON fields and display settings, version counter, user_id index.
+  - `create_submissions`: UUID PK, foreign key to widgets with CASCADE delete, JSON data, geo-enrichment columns (`country`, `city`, `region`), IP address, honeypot trigger boolean, widget_id and created_at indexes.
+  - `demo.js`: Seed data with User A (2 widgets, 4 submissions) and User B (1 widget, 1 submission) using real bcrypt password hashing at seed time.
+- **Authentication & Tenant Isolation**:
+  - Registration & Login with 10 bcrypt salt rounds and 7-day signed JWT tokens.
+  - Strict tenant isolation: every widget query verifies `id = ? AND user_id = ?`, every submission query joins through `widgets` on `w.user_id = ?`.
+- **Public Widget Runtime**:
+  - `public/widget.js`: Standalone client script extracting its own script tag URL parameter `?id=...&v=...`, fetching schema from `/api/submissions/config/:widgetId`, rendering a responsive form card into the DOM, and submitting cross-origin.
+  - Added cache-busting: increments `version` and automatically appends `&v=${version}` to embed snippets and config requests.
+- **Resilient Ingestion Pipeline**:
+  - Client IP extraction supporting `x-forwarded-for`, `x-mock-ip`, and socket address.
+  - Multi-provider fallback geo-enrichment (`ip-api.com` -> `ipapi.co` -> null) with 3000ms timeout per provider.
+  - Honeypot protection returning silent `200 OK` without database write.
+  - Dual rate limiting: 20/15m per IP and 100/15m per widget.
+  - Fire-and-forget side effect execution.
+  - JSON parse error handler catching syntax errors and returning `400 Bad Request` `{ "error": "Invalid JSON" }` instead of uncaught 500s.
+- **Dashboard Module**: Paginated submissions and dialect-portable analytics (supporting SQLite and PostgreSQL date grouping).
+- **Automated Test Suite**: Verified Probes 1 through 6 in `test/probes.test.js`.
 
-## Phase 2: Core Express App & Infrastructure
-- Created `src/app.js` with structured routing and CORS separation:
-  - Public submission endpoint (`/api/submissions`) with open CORS and 10kb request limit.
-  - Public `/widget.js` script endpoint with `Cache-Control: public, max-age=300`.
-  - Admin endpoints (`/api/auth`, `/api/widgets`, `/api/dashboard`) with restricted/controlled CORS.
-  - Dedicated preflight OPTIONS handler.
-  - Global JSON entity parse error handler converting syntax errors to `400 Bad Request` `{ "error": "Invalid JSON" }` rather than unhandled 500 errors.
-- Created root `index.js` server bootstrap listening on `PORT=3000`.
+---
 
-## Phase 3: Auth Module & Tenant Middleware
-- Built `src/modules/auth/auth.service.js`:
-  - `register`: Hashes password with bcrypt (10 rounds), generates UUID id, rejects duplicate emails with `Email already in use`.
-  - `login`: Compares passwords with bcrypt, signs JWT with `{ userId }` payload expiring in 7 days, returns generic `Invalid credentials` error on mismatch.
-- Built `src/modules/auth/auth.controller.js` and `auth.routes.js`.
-- Built `src/middleware/auth.middleware.js`: Extracts `Bearer` token from `Authorization` header, verifies JWT, attaches `req.user = { userId }`, returns `401 Unauthorized` directly on verification failure.
+### Where AI helped
+1. **Rapid Scaffolding**: Fast generation of initial Knex migrations, schema definitions, and REST controllers.
+2. **Resilient Network Timeouts**: Clean `AbortController` implementation for multi-provider geo-enrichment with 3000ms timeouts.
+3. **Automated Probe Verification**: Built a complete test runner in `test/probes.test.js` to simulate cross-origin submissions, rate limiting bursts, and honeypot traps without external services.
 
-## Phase 4: Widgets Module
-- Built `src/modules/widgets/widgets.schema.js`: Zod schema for widget creation and updates.
-- Built `src/modules/widgets/widgets.service.js`:
-  - Enforces tenant isolation on all queries (`user_id = ?`).
-  - Automatic JSON serialization/deserialization for SQLite.
-  - `generateEmbedSnippet`: Returns HTML script snippet for customer websites.
-- Built `src/modules/widgets/widgets.controller.js` and `widgets.routes.js`:
-  - CRUD operations returning 200, 201, 204, 403 (cross-tenant), and 404.
-  - Embed snippet endpoint (`GET /api/widgets/:id/embed`).
-- Built `src/modules/widgets/widget-script.handler.js`: Serves `widget.js` with client-side bootstrap and caching headers.
+---
 
-## Phase 5: Submissions Module, Resilient Geo-Enrichment & Rate Limiting
-- Built `src/modules/enrichment/geo.service.js`:
-  - Provider A (`ip-api.com`) with 3000ms timeout.
-  - Provider B (`ipapi.co`) fallback with 3000ms timeout.
-  - Graceful fallback returning `null` if both fail.
-  - Detection of private/loopback IP addresses.
-- Built `src/modules/submissions/submissions.schema.js`: Validates `widget_id` (UUID), `data` (max 20 fields), and `honeypot` (max length 0).
-- Built `src/modules/submissions/submissions.service.js`:
-  - Explicit widget existence check: rejects missing or invalid widgets with `404 Widget not found`.
-  - Non-blocking fire-and-forget side effect execution (`triggerSideEffect`) with swallowed errors.
-- Built `src/modules/submissions/submissions.controller.js`:
-  - Honeypot check: If bot populates honeypot, returns `200 OK` silent success and drops the record.
-  - IP extraction from `x-forwarded-for`, `x-mock-ip`, and socket address.
-  - Public `GET /api/submissions/config/:widgetId` endpoint for embedding.
-- Built `src/middleware/rateLimit.middleware.js`:
-  - Per-IP rate limiter (20 per 15 min).
-  - Per-Widget rate limiter (100 per 15 min).
+### Where AI was wrong / what I changed
+1. **Express 5 Wildcard Routing**:
+   - *Issue*: Initially added `app.options('*', cors())`. In Express 5 / `path-to-regexp` v8, un-named wildcard `*` throws a `PathError [TypeError]: Missing parameter name at index 1: *`.
+   - *Fix*: Replaced with an Express 5 compatible OPTIONS preflight middleware handler setting standard CORS headers and returning 204.
+2. **UUID Format Strictness in Zod**:
+   - *Issue*: Dummy seed IDs like `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa` were rejected by `z.string().uuid()` because RFC 4122 requires specific version nibbles (1-5) and variant nibbles (8, 9, a, b).
+   - *Fix*: Updated the seed file and test fixtures to use valid RFC 4122 UUID v4 values (e.g. `aaaa1111-aaaa-4aaa-8aaa-aaaaaaaaaaaa`), ensuring zero validation rejections.
+3. **Database Date Grouping Portability**:
+   - *Issue*: Raw SQLite `date()` or `strftime()` breaks when deploying or migrating to PostgreSQL.
+   - *Fix*: Made the dashboard date grouping query dialect-portable using Knex client detection (`to_char(s.created_at, 'YYYY-MM-DD')` for Postgres vs `strftime('%Y-%m-%d', s.created_at)` for SQLite).
+4. **Architectural Modularization**:
+   - *Issue*: `app.js` was becoming a monolithic file mixing CORS configurations, body parsing, error handling, and route definitions.
+   - *Fix*: Refactored into `src/config/middleware.js` (app-level middleware & error handling), `src/config/routes.js` (route mounting), and a clean `src/app.js` orchestrator.
+5. **Cryptographic JWT Secret Generation**:
+   - *Issue*: Static placeholder string in `.env`.
+   - *Fix*: Replaced with a cryptographically secure 256-bit random key (64 hex characters) generated via `crypto.randomBytes(32)` and added length validation in `src/config/env.js`.
 
-## Phase 6: Dashboard Module (Tenant Analytics)
-- Built `src/modules/dashboard/dashboard.controller.js` and `dashboard.routes.js`:
-  - `GET /api/dashboard/submissions`: Paginated list of submissions joining through `widgets` to enforce `w.user_id = req.user.userId`.
-  - `GET /api/dashboard/stats`: Analytics aggregation (total submissions, submissions per widget, submissions by country, 7-day timeline).
+---
 
-## Phase 7 & 8: Embeddable Widget Script & Test Page
-- Built `public/widget.js`:
-  - Extracts widget ID from script `src` query parameters.
-  - Fetches widget schema from `/api/submissions/config/:widgetId`.
-  - Dynamically renders responsive UI with isolated CSS styles.
-  - Injects hidden honeypot field.
-  - Submits cross-origin `POST /api/submissions` with UI status feedback.
-- Built `test-page/index.html`:
-  - Standalone web page simulating an external client website.
-
-## Phase 9 & 10: Seed Data & Verification
-- Created `src/db/seeds/demo.js`:
-  - Populates User A (`user_a@example.com`) and User B (`user_b@example.com`).
-  - 2 widgets for User A, 1 widget for User B.
-  - Sample submissions for both tenants.
-- Built `test/probes.test.js` automated test suite:
-  - Verified Probes 1 through 6.
-  - Verified cross-tenant isolation and 403 Forbidden enforcement.
-  - Verified dual rate limiting.
-  - Verified JSON syntax error handler.
+### What I learned
+1. **Tenant Isolation must be enforced at the SQL JOIN layer**: Filtering submissions directly by `widget_id` is insecure because widgets belong to users. Every query on `submissions` MUST join through `widgets` on `w.user_id = req.user.userId`.
+2. **Cross-Origin Embeds require strict separation of concerns**: The public script and submission endpoint must have completely separate CORS and rate limiting boundaries from the admin dashboard API.
+3. **Graceful Degradation is non-negotiable for ingest APIs**: Upstream geo-IP lookups and webhook/email side effects must never block or fail the primary user submission flow.

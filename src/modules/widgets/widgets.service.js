@@ -99,9 +99,9 @@ async function deleteWidget(widgetId, userId) {
   return true;
 }
 
-function generateEmbedSnippet(widgetId) {
+function generateEmbedSnippet(widgetId, version = 1) {
   const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
-  return `<script src="${baseUrl}/widget.js?id=${widgetId}"></script>`;
+  return `<script src="${baseUrl}/widget.js?id=${widgetId}&v=${version}"></script>`;
 }
 
 module.exports = {
