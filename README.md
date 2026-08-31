@@ -239,6 +239,7 @@ This starts a PostgreSQL 16 database on port `5432` and the Node.js API on port 
    - `DB_SSL`: `true`
    - `JWT_SECRET`: *(your secure 32+ char secret)*
    - `BASE_URL`: `https://your-app-name.onrender.com`
+   - `ALLOWED_ADMIN_ORIGIN`: `https://your-vercel-domain.vercel.app` *(Critical for Admin CORS Security)*
 
 ### Option C: Deploy to Railway.app
 
@@ -249,6 +250,7 @@ This starts a PostgreSQL 16 database on port `5432` and the Node.js API on port 
    - `NODE_ENV`: `production`
    - `JWT_SECRET`: *(your 64-character secret)*
    - `BASE_URL`: `https://${{RAILWAY_PUBLIC_DOMAIN}}`
+   - `ALLOWED_ADMIN_ORIGIN`: `https://your-vercel-domain.vercel.app` *(Critical for Admin CORS Security)*
 4. Set **Build Command**: `npm install && npm run migrate`
 5. Set **Start Command**: `npm start`
 

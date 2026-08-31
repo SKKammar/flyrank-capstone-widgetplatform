@@ -10,5 +10,6 @@ module.exports = {
   PORT: process.env.PORT || 3000,
   JWT_SECRET: jwtSecret,
   DB_FILENAME: process.env.DB_FILENAME || './dev.sqlite',
-  NODE_ENV: process.env.NODE_ENV || 'development'
+  NODE_ENV: process.env.NODE_ENV || 'development',
+  ALLOWED_ADMIN_ORIGIN: process.env.ALLOWED_ADMIN_ORIGIN || 'http://localhost:5501'
 };
