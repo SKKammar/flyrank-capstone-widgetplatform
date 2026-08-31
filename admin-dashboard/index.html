@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FlyRank — Admin Dashboard</title>
+  <style>
+    :root {
+      --bg-color: #f8fafc;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --brand-primary: #3b82f6;
+      --brand-hover: #2563eb;
+      --card-bg: #ffffff;
+      --border-color: #e2e8f0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: var(--bg-color);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: var(--card-bg);
+      padding: 16px 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-color);
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    }
+    .logo {
+      font-weight: 800;
+      font-size: 1.25rem;
+      color: var(--brand-primary);
+      letter-spacing: -0.05em;
+    }
+    .logout-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+    .logout-btn:hover {
+      color: var(--text-main);
+    }
+    
+    .container {
+      max-width: 1000px;
+      margin: 40px auto;
+      padding: 0 20px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    /* Views */
+    #login-view, #dashboard-view {
+      display: none;
+    }
+
+    /* Login Card */
+    .auth-card {
+      background: var(--card-bg);
+      max-width: 400px;
+      margin: 60px auto;
+      padding: 32px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+      border: 1px solid var(--border-color);
+    }
+    .auth-card h2 {
+      margin-top: 0;
+      margin-bottom: 24px;
+      font-size: 1.5rem;
+      text-align: center;
+    }
+
+    /* Forms */
+    .form-group {
+      margin-bottom: 16px;
+    }
+    label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #334155;
+    }
+    input[type="text"], input[type="email"], input[type="password"] {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 0.9375rem;
+      box-sizing: border-box;
+      transition: border-color 0.2s;
+    }
+    input:focus {
+      outline: none;
+      border-color: var(--brand-primary);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
+    .btn {
+      width: 100%;
+      padding: 12px;
+      background: var(--brand-primary);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9375rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn:hover {
+      background: var(--brand-hover);
+    }
+    .error-msg {
+      color: #ef4444;
+      font-size: 0.875rem;
+      margin-top: 12px;
+      text-align: center;
+      display: none;
+    }
+
+    /* Dashboard Layout */
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+    }
+    .dashboard-header h1 {
+      margin: 0;
+      font-size: 1.875rem;
+    }
+    
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 350px;
+      gap: 32px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1);
+      border: 1px solid var(--border-color);
+      margin-bottom: 24px;
+    }
+    .card h3 {
+      margin-top: 0;
+      margin-bottom: 16px;
+      font-size: 1.125rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 12px;
+    }
+
+    /* Widget List */
+    .widget-item {
+      padding: 16px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      margin-bottom: 12px;
+      background: #f8fafc;
+    }
+    .widget-item strong {
+      display: block;
+      font-size: 1.05rem;
+      margin-bottom: 4px;
+    }
+    .widget-item span {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      font-family: monospace;
+    }
+    .copy-btn {
+      margin-top: 12px;
+      background: #e2e8f0;
+      color: #0f172a;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .copy-btn:hover {
+      background: #cbd5e1;
+    }
+
+    /* Snippet Box */
+    #snippet-container {
+      display: none;
+      margin-top: 24px;
+      padding: 16px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+    }
+    #snippet-code {
+      display: block;
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 12px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 0.875rem;
+      margin: 12px 0;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">FlyRank Platform</div>
+    <button id="logout-btn" class="logout-btn" style="display:none;">Log Out</button>
+  </header>
+
+  <div class="container">
+    <!-- LOGIN VIEW -->
+    <div id="login-view">
+      <div class="auth-card">
+        <h2>Welcome Back</h2>
+        <form id="login-form">
+          <div class="form-group">
+            <label>Email Address</label>
+            <input type="email" id="email" value="user_a@example.com" required>
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="password" value="Password123!" required>
+          </div>
+          <button type="submit" class="btn" id="login-submit">Log In</button>
+          <div id="login-error" class="error-msg"></div>
+        </form>
+      </div>
+    </div>
+
+    <!-- DASHBOARD VIEW -->
+    <div id="dashboard-view">
+      <div class="dashboard-header">
+        <h1>Widgets Dashboard</h1>
+      </div>
+
+      <div class="grid">
+        <!-- Left Col: Widget List -->
+        <div>
+          <div class="card">
+            <h3>Your Widgets</h3>
+            <div id="widgets-list">
+              <p style="color:#64748b;">Loading widgets...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Col: Builder -->
+        <div>
+          <div class="card">
+            <h3>Create New Widget</h3>
+            <form id="create-widget-form">
+              <div class="form-group">
+                <label>Widget Title</label>
+                <input type="text" id="widget-title" placeholder="e.g. Contact Sales" required>
+              </div>
+              <div class="form-group">
+                <label>Description (Optional)</label>
+                <input type="text" id="widget-desc" placeholder="e.g. We will reply in 24h">
+              </div>
+              <div class="form-group">
+                <label>Submit Button Text</label>
+                <input type="text" id="widget-btn" value="Submit" required>
+              </div>
+              <button type="submit" class="btn">Create Widget</button>
+            </form>
+
+            <div id="snippet-container">
+              <strong>Widget Created!</strong>
+              <p style="font-size: 0.875rem; margin-top: 4px; color: #64748b;">Paste this code into your website's HTML:</p>
+              <code id="snippet-code"></code>
+              <button class="btn" id="copy-snippet-btn" style="padding: 8px;">Copy Snippet</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = 'http://localhost:3000/api';
+    const WIDGET_BASE = 'http://localhost:3000';
+
+    // DOM Elements
+    const loginView = document.getElementById('login-view');
+    const dashboardView = document.getElementById('dashboard-view');
+    const logoutBtn = document.getElementById('logout-btn');
+    const loginForm = document.getElementById('login-form');
+    const widgetsList = document.getElementById('widgets-list');
+    const createForm = document.getElementById('create-widget-form');
+
+    // State
+    let token = localStorage.getItem('flyrank_token');
+
+    function init() {
+      if (token) {
+        showDashboard();
+      } else {
+        showLogin();
+      }
+    }
+
+    function showLogin() {
+      loginView.style.display = 'block';
+      dashboardView.style.display = 'none';
+      logoutBtn.style.display = 'none';
+    }
+
+    function showDashboard() {
+      loginView.style.display = 'none';
+      dashboardView.style.display = 'block';
+      logoutBtn.style.display = 'block';
+      fetchWidgets();
+    }
+
+    // Auth
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const errorDiv = document.getElementById('login-error');
+      const btn = document.getElementById('login-submit');
+      
+      btn.textContent = 'Logging in...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(`${API_BASE}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        
+        if (!res.ok) throw new Error(data.error || 'Login failed');
+        
+        token = data.token;
+        localStorage.setItem('flyrank_token', token);
+        errorDiv.style.display = 'none';
+        showDashboard();
+      } catch (err) {
+        errorDiv.textContent = err.message;
+        errorDiv.style.display = 'block';
+      } finally {
+        btn.textContent = 'Log In';
+        btn.disabled = false;
+      }
+    });
+
+    logoutBtn.addEventListener('click', () => {
+      token = null;
+      localStorage.removeItem('flyrank_token');
+      showLogin();
+    });
+
+    // Fetch Widgets
+    async function fetchWidgets() {
+      try {
+        const res = await fetch(`${API_BASE}/widgets`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (res.status === 401) {
+          logoutBtn.click();
+          return;
+        }
+        
+        const data = await res.json();
+        
+        if (data.length === 0) {
+          widgetsList.innerHTML = '<p style="color:#64748b;">You have no widgets yet.</p>';
+          return;
+        }
+
+        widgetsList.innerHTML = data.map(w => `
+          <div class="widget-item">
+            <strong>${w.title}</strong>
+            <span>ID: ${w.id}</span><br>
+            <span>Version: ${w.version}</span>
+            <div>
+              <button class="copy-btn" onclick="copyExisting('${w.id}', ${w.version})">Copy Snippet</button>
+            </div>
+          </div>
+        `).join('');
+
+      } catch (err) {
+        widgetsList.innerHTML = `<p style="color:red;">Error loading widgets: ${err.message}</p>`;
+      }
+    }
+
+    // Create Widget
+    createForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const payload = {
+        type: 'contact',
+        title: document.getElementById('widget-title').value,
+        description: document.getElementById('widget-desc').value || null,
+        button_text: document.getElementById('widget-btn').value,
+        fields: [
+          { name: "name", type: "text", required: true },
+          { name: "email", type: "email", required: true },
+          { name: "message", type: "textarea", required: false }
+        ]
+      };
+
+      try {
+        const res = await fetch(`${API_BASE}/widgets`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+        
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        // Show Snippet
+        const snippet = `<script src="${WIDGET_BASE}/widget.js?id=${data.id}&v=1"><\/script>`;
+        document.getElementById('snippet-code').textContent = snippet;
+        document.getElementById('snippet-container').style.display = 'block';
+        
+        // Refresh list
+        fetchWidgets();
+        createForm.reset();
+
+      } catch (err) {
+        alert('Failed to create widget: ' + err.message);
+      }
+    });
+
+    // Utilities
+    function copyExisting(id, version) {
+      const snippet = `<script src="${WIDGET_BASE}/widget.js?id=${id}&v=${version}"><\/script>`;
+      navigator.clipboard.writeText(snippet);
+      alert('Snippet copied to clipboard!');
+    }
+
+    document.getElementById('copy-snippet-btn').addEventListener('click', () => {
+      const code = document.getElementById('snippet-code').textContent;
+      navigator.clipboard.writeText(code);
+      alert('Snippet copied to clipboard!');
+    });
+
+    // Boot
+    init();
+  </script>
+</body>
+</html>
