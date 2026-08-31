@@ -3,14 +3,16 @@ const env = require('../config/env');
 
 function authMiddleware(req, res, next) {
   const authHeader = req.headers['authorization'];
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (!authHeader || typeof authHeader !== 'string') {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const token = authHeader.split(' ')[1];
-  if (!token) {
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+  if (!match || !match[1]) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
+
+  const token = match[1].trim();
 
   try {
     const payload = jwt.verify(token, env.JWT_SECRET);

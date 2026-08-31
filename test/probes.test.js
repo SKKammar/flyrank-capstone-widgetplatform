@@ -17,9 +17,19 @@ async function runTests() {
 
   try {
     // -------------------------------------------------------------
+    // 0. HEALTH CHECK
+    // -------------------------------------------------------------
+    console.log('[TEST 0] Health Check');
+    const healthRes = await fetch(`${baseUrl}/api/health`);
+    assert.strictEqual(healthRes.status, 200);
+    const healthData = await healthRes.json();
+    assert.strictEqual(healthData.status, 'ok');
+    console.log('✓ Health check passed');
+
+    // -------------------------------------------------------------
     // 1. AUTH PROBES: Register & Login (User A and User B)
     // -------------------------------------------------------------
-    console.log('[TEST 1] Auth: Register and Login');
+    console.log('\n[TEST 1] Auth: Register and Login');
     // Login User A seeded in demo.js
     const loginResA = await fetch(`${baseUrl}/api/auth/login`, {
       method: 'POST',
@@ -31,6 +41,12 @@ async function runTests() {
     assert.ok(loginDataA.token, 'Token should be returned');
     const tokenA = loginDataA.token;
 
+    // Test case-insensitive auth header with lowercase "bearer"
+    const caseInsensitiveAuth = await fetch(`${baseUrl}/api/widgets`, {
+      headers: { Authorization: `bearer ${tokenA}` }
+    });
+    assert.strictEqual(caseInsensitiveAuth.status, 200, 'Lowercase bearer prefix should be accepted');
+
     // Login User B seeded in demo.js
     const loginResB = await fetch(`${baseUrl}/api/auth/login`, {
       method: 'POST',
@@ -41,7 +57,7 @@ async function runTests() {
     const loginDataB = await loginResB.json();
     const tokenB = loginDataB.token;
 
-    // Test Invalid Login
+    // Test Invalid Login (wrong password)
     const invalidLogin = await fetch(`${baseUrl}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -50,6 +66,14 @@ async function runTests() {
     assert.strictEqual(invalidLogin.status, 400, 'Invalid login should return 400');
     const invalidLoginData = await invalidLogin.json();
     assert.strictEqual(invalidLoginData.error, 'Invalid credentials');
+
+    // Test Invalid Login (non-string types)
+    const nonStringLogin = await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 12345, password: null })
+    });
+    assert.strictEqual(nonStringLogin.status, 400, 'Non-string login should safely return 400');
     console.log('✓ Auth tests passed');
 
     // -------------------------------------------------------------

@@ -6,19 +6,29 @@ async function getSubmissions(req, res) {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.max(1, Math.min(100, parseInt(req.query.limit) || 20));
     const offset = (page - 1) * limit;
+    const filterWidgetId = req.query.widget_id ? String(req.query.widget_id).trim().toLowerCase() : null;
 
     // Strict tenant isolation: ALWAYS join through widgets
-    const totalCountQuery = await db('submissions as s')
+    let totalCountQuery = db('submissions as s')
       .join('widgets as w', 's.widget_id', 'w.id')
-      .where('w.user_id', userId)
-      .count('s.id as count')
-      .first();
+      .where('w.user_id', userId);
 
-    const total = totalCountQuery ? Number(totalCountQuery.count) : 0;
+    if (filterWidgetId) {
+      totalCountQuery = totalCountQuery.where('s.widget_id', filterWidgetId);
+    }
 
-    const rows = await db('submissions as s')
+    const countResult = await totalCountQuery.count('s.id as count').first();
+    const total = countResult ? Number(countResult.count) : 0;
+
+    let rowsQuery = db('submissions as s')
       .join('widgets as w', 's.widget_id', 'w.id')
-      .where('w.user_id', userId)
+      .where('w.user_id', userId);
+
+    if (filterWidgetId) {
+      rowsQuery = rowsQuery.where('s.widget_id', filterWidgetId);
+    }
+
+    const rows = await rowsQuery
       .select(
         's.id',
         's.widget_id',
@@ -40,7 +50,9 @@ async function getSubmissions(req, res) {
       if (typeof data === 'string') {
         try {
           data = JSON.parse(data);
-        } catch {}
+        } catch {
+          data = {};
+        }
       }
       return { ...row, data };
     });

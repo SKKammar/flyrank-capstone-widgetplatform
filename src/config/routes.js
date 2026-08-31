@@ -8,6 +8,16 @@ const dashboardRoutes = require('../modules/dashboard/dashboard.routes');
 const widgetScriptHandler = require('../modules/widgets/widget-script.handler');
 
 function configureRoutes(app) {
+  // Health check endpoint
+  app.get(['/', '/api/health', '/health'], (req, res) => {
+    res.status(200).json({
+      status: 'ok',
+      service: 'FlyRank Widget Platform',
+      version: '1.0.0',
+      timestamp: new Date().toISOString()
+    });
+  });
+
   // Public widget script asset
   app.get('/widget.js', publicCors, widgetScriptHandler);
 

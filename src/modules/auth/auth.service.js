@@ -49,7 +49,13 @@ async function register(email, password) {
 }
 
 async function login(email, password) {
-  if (!email || !password) {
+  if (
+    !email ||
+    !password ||
+    typeof email !== 'string' ||
+    typeof password !== 'string' ||
+    !email.trim()
+  ) {
     throw new Error('Invalid credentials');
   }
 

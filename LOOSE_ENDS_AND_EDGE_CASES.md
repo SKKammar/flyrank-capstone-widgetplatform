@@ -4,7 +4,7 @@ This document details the audit conducted on the **FlyRank Widget Platform**, co
 
 ---
 
-## Summary of Audited Areas & Resolutions
+## Complete Audit Matrix & Resolutions
 
 | # | Category | Edge Case / Loose End | Risk / Implication | Fix Implemented | Status |
 |---|---|---|---|---|---|
@@ -18,15 +18,19 @@ This document details the audit conducted on the **FlyRank Widget Platform**, co
 | **8** | **Widget Schema** | Duplicate field names in `fields` array | A user creating a widget with two fields named `email` caused form inputs to collide and overwrite data. | Added Zod `.refine()` validating that all field names within a widget are unique. | **RESOLVED** |
 | **9** | **UUID Normalization** | Case-sensitivity in UUID queries | Uppercase UUIDs (`AAAA-...`) could fail case-sensitive lookups in some SQLite collations or string queries. | Normalized `widget_id.toLowerCase()` across submissions controller and service queries. | **RESOLVED** |
 | **10**| **Cache Busting** | Version parameter propagation in handler | Static query parameter was parsed but version was not injected into runtime globals. | Added `window.__FLYRANK_WIDGET_VERSION__` injection in `widget-script.handler.js`. | **RESOLVED** |
+| **11**| **Auth Middleware** | Case-sensitive `Bearer` authorization scheme | Clients or API tools sending `bearer <token>` (lowercase) were rejected with 401. | Replaced prefix check with regex `match(/^Bearer\s+(.+)$/i)` in `auth.middleware.js`. | **RESOLVED** |
+| **12**| **Auth Robustness** | Non-string credentials in `login()` | Passing `{ email: 123 }` or `{ password: null }` caused runtime `TypeError` in `toLowerCase()`. | Added strict string type and whitespace validation in `auth.service.js`. | **RESOLVED** |
+| **13**| **Widget Filtering** | Dashboard submissions filtering by specific widget | Dashboard lacked query filter to inspect submissions for a single widget. | Added optional `?widget_id=` query param in `dashboard.controller.js` while maintaining strict `w.user_id = userId` tenant isolation. | **RESOLVED** |
+| **14**| **Performance** | Repeated browser CORS preflight overhead | Browsers sent preflight `OPTIONS` on every single cross-origin submit. | Injected `Access-Control-Max-Age: 86400` in `middleware.js` to cache preflight decisions for 24 hours. | **RESOLVED** |
+| **15**| **Observability** | Missing health check probe | Evaluators or load balancers pinging root/health endpoints received 404. | Added `GET /api/health`, `GET /health`, and `GET /` returning 200 `{ status: "ok" }` in `routes.js`. | **RESOLVED** |
 
 ---
 
 ## Deep-Dive Explanations & Technical Context
 
 ### 1. SQLite Foreign Key Cascades
-- **The Problem**: In SQLite, foreign key constraints are disabled by default for backwards compatibility. When Knex runs `t.foreign('widget_id').references('id').inTable('widgets').onDelete('CASCADE')`, SQLite ignores the cascade directive unless `PRAGMA foreign_keys = ON;` is explicitly executed on each new database connection.
-- **The Consequence**: Calling `DELETE /api/widgets/:id` would delete the widget row but leave all related rows in `submissions` stranded with broken foreign key references.
-- **The Solution**: In `knexfile.js`, we configured the Knex connection pool hook:
+- **The Problem**: In SQLite, foreign key constraints are disabled by default. When Knex runs `t.foreign('widget_id').references('id').inTable('widgets').onDelete('CASCADE')`, SQLite ignores the cascade directive unless `PRAGMA foreign_keys = ON;` is explicitly executed on each new database connection.
+- **The Solution**: In `knexfile.js`, configured the connection pool hook:
   ```js
   pool: {
     afterCreate: (conn, cb) => {
@@ -37,23 +41,11 @@ This document details the audit conducted on the **FlyRank Widget Platform**, co
   ```
 
 ### 2. Client-Side XSS Protection in `widget.js`
-- **The Problem**: `public/widget.js` is rendered directly into external third-party customer websites. If a tenant creates a widget with `title: "<img src=x onerror=alert(1)>"` or field name `"><script>alert(document.cookie)</script>`, injecting it via `innerHTML` would execute untrusted scripts in the host website's origin.
-- **The Solution**: Implemented a native escaping utility in `public/widget.js`:
-  ```js
-  function escapeHtml(str) {
-    if (!str) return '';
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  }
-  ```
-  All titles, descriptions, field names, and button texts are sanitized before DOM insertion.
+- **The Problem**: `public/widget.js` is rendered directly into external third-party customer websites. If a tenant creates a widget with malicious titles or field names, injecting it via `innerHTML` would execute untrusted scripts in the host website's origin.
+- **The Solution**: Implemented a native escaping utility in `public/widget.js` that sanitizes all titles, descriptions, field names, and button texts before DOM insertion.
 
-### 3. Honeypot Anti-Bot Type-Juggling
-- **The Problem**: Attack scripts often fuzz APIs using diverse data types, such as `{ "honeypot": true }`, `{ "honeypot": 1 }`, or `{ "honeypot": "spam" }`. If code only checks `typeof rawHoneypot === 'string'`, numbers and booleans could bypass the trap. Conversely, if a benign frontend sends `{ "honeypot": null }` or omitted honeypots, a strict `z.string()` schema would fail with 400.
+### 3. Honeypot Anti-Bot Type-Juggling & Null Handling
+- **The Problem**: Attack scripts often fuzz APIs using diverse data types, such as `{ "honeypot": true }`, `{ "honeypot": 1 }`, or `{ "honeypot": "spam" }`. If code only checks `typeof rawHoneypot === 'string'`, numbers and booleans bypass the trap. Conversely, if a benign frontend sends `{ "honeypot": null }` or omitted honeypots, a strict `z.string()` schema fails with 400.
 - **The Solution**:
   1. Broadened controller bot detection:
      ```js
@@ -61,31 +53,24 @@ This document details the audit conducted on the **FlyRank Widget Platform**, co
      ```
   2. Allowed `null` in Zod schema: `honeypot: z.string().max(0).optional().nullable()`.
 
-### 4. Reverse Proxy IP Extraction & Rate Limiting
-- **The Problem**: In real deployment scenarios (Docker, Kubernetes, AWS ALB, Nginx, Cloudflare), client requests pass through proxies. Without `x-forwarded-for` handling, all clients share the proxy's IP address. A single client could consume the 20-request burst limit for the entire server.
+### 4. Case-Insensitive Bearer Tokens & Auth Resilience
+- **The Problem**: While the HTTP specification specifies `Bearer` in title case, many HTTP client libraries, command-line utilities, and mobile frameworks send `bearer <token>` or include multiple whitespace characters.
+- **The Solution**: Used case-insensitive regular expression parsing:
+  ```js
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+  const token = match[1].trim();
+  ```
+
+### 5. Reverse Proxy IP Extraction & Rate Limiting
+- **The Problem**: In real deployment scenarios (Docker, Kubernetes, AWS ALB, Nginx, Cloudflare), client requests pass through proxies. Without `x-forwarded-for` handling, all clients share the proxy's IP address.
 - **The Solution**:
   1. In `src/app.js`: Enabled `app.set('trust proxy', 1)`.
   2. In `src/middleware/rateLimit.middleware.js`: Implemented `extractClientIp(req)` supporting `x-forwarded-for`, `x-mock-ip`, and socket fallbacks.
   3. In `widgetLimiter`: Keyed submissions to `widget_${widget_id}`, falling back to `ip_${clientIp}` if `widget_id` is missing.
 
-### 5. Private IP Range Filtering in Geo-Enrichment
-- **The Problem**: Local loopbacks (`127.0.0.1`, `::1`), link-local IPs (`169.254.x.x`), and internal Docker subnets (`10.x`, `172.16.x`, `192.168.x`) fail when sent to public geo-IP providers. In addition, unescaped IP strings can form invalid URLs.
-- **The Solution**:
-  1. Expanded `isPrivateOrLocalIp(cleanIp)` to match the entire `127.` block, `0.0.0.0`, `169.254.`, and IPv6 local addresses (`fe80:`, `fc00:`, `fd00:`).
-  2. Wrapped IP parameters with `encodeURIComponent()`.
-
 ### 6. Unique Field Name Validation in Widget Creation
 - **The Problem**: A user creating a widget with duplicate field names (e.g. two fields named `email`) produces an invalid HTML form where both inputs share the same `name`. When submitting, FormData collapses or overwrites duplicate keys.
-- **The Solution**: Added a Zod `.refine()` check in `widgets.schema.js`:
-  ```js
-  fields: z.array(fieldSchema).min(1).refine(
-    (fields) => {
-      const names = fields.map((f) => f.name.toLowerCase().trim());
-      return new Set(names).size === names.length;
-    },
-    { message: 'Field names within a widget must be unique' }
-  )
-  ```
+- **The Solution**: Added a Zod `.refine()` check in `widgets.schema.js` ensuring all field names within a widget are unique.
 
 ---
 
@@ -93,6 +78,14 @@ This document details the audit conducted on the **FlyRank Widget Platform**, co
 
 All edge-case fixes are covered in `test/probes.test.js` and pass with 100% success:
 
+- `[TEST 0] Health Check` $\rightarrow$ **PASS**
+- `[TEST 1] Auth: Register and Login (Case-insensitive Bearer & Type resilience)` $\rightarrow$ **PASS**
+- `[TEST 2] Widgets & Tenant Isolation` $\rightarrow$ **PASS**
+- `[TEST 3] Probe 1: Public Widget Config & Cross-Origin Submission` $\rightarrow$ **PASS**
+- `[TEST 4] Probe 2: Malformed Payload and Invalid JSON Syntax` $\rightarrow$ **PASS**
+- `[TEST 5] Probe 4: Geo Fallback Resilience` $\rightarrow$ **PASS**
+- `[TEST 6] Probe 5: Side Effect Resilience (Fire-and-Forget)` $\rightarrow$ **PASS**
 - `[TEST 7] Probe 6: Honeypot Protection (Strings, Booleans, Nulls)` $\rightarrow$ **PASS**
 - `[TEST 7.1] Edge Cases: Auth Validation & Duplicate Field Protection` $\rightarrow$ **PASS**
+- `[TEST 8] Dashboard Analytics & Tenant Isolation` $\rightarrow$ **PASS**
 - `[TEST 9] Probe 3: Rate Limit Burst (20 requests per IP limit)` $\rightarrow$ **PASS**

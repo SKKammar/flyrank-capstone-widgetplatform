@@ -25,8 +25,10 @@ async function triggerSideEffect(submission) {
 }
 
 async function createSubmission(widgetId, data, ip) {
+  const normalizedId = String(widgetId || '').trim().toLowerCase();
+
   // 1. Verify widget actually exists in DB
-  const widget = await db('widgets').where({ id: widgetId }).first();
+  const widget = await db('widgets').where({ id: normalizedId }).first();
   if (!widget) {
     const error = new Error('Widget not found');
     error.status = 404;
@@ -47,9 +49,9 @@ async function createSubmission(widgetId, data, ip) {
   const now = new Date();
   const submissionRecord = {
     id,
-    widget_id: widgetId,
-    data: typeof data === 'string' ? data : JSON.stringify(data),
-    ip_address: ip || null,
+    widget_id: normalizedId,
+    data: typeof data === 'string' ? data : JSON.stringify(data || {}),
+    ip_address: ip ? String(ip).replace(/^::ffff:/, '').trim() : null,
     country: geo ? geo.country : null,
     city: geo ? geo.city : null,
     region: geo ? geo.region : null,
@@ -69,7 +71,8 @@ async function createSubmission(widgetId, data, ip) {
 }
 
 async function getWidgetConfig(widgetId) {
-  const widget = await db('widgets').where({ id: widgetId }).first();
+  const normalizedId = String(widgetId || '').trim().toLowerCase();
+  const widget = await db('widgets').where({ id: normalizedId }).first();
   if (!widget) {
     const error = new Error('Widget not found');
     error.status = 404;
@@ -80,25 +83,29 @@ async function getWidgetConfig(widgetId) {
   if (typeof fields === 'string') {
     try {
       fields = JSON.parse(fields);
-    } catch {}
+    } catch {
+      fields = [];
+    }
   }
 
   let displayOptions = widget.display_options;
   if (typeof displayOptions === 'string') {
     try {
       displayOptions = JSON.parse(displayOptions);
-    } catch {}
+    } catch {
+      displayOptions = {};
+    }
   }
 
   return {
     id: widget.id,
     title: widget.title,
-    description: widget.description,
+    description: widget.description || '',
     type: widget.type,
-    fields,
-    button_text: widget.button_text,
-    display_options: displayOptions,
-    version: widget.version
+    fields: fields || [],
+    button_text: widget.button_text || 'Submit',
+    display_options: displayOptions || {},
+    version: widget.version || 1
   };
 }
 

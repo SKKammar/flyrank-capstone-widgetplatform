@@ -19,9 +19,10 @@ const adminCors = cors({
 // Global preflight OPTIONS handler compatible with Express 5
 function optionsPreflightHandler(req, res, next) {
   if (req.method === 'OPTIONS') {
-    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-mock-ip, x-forwarded-for');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-mock-ip, x-forwarded-for, x-requested-with, accept');
+    res.header('Access-Control-Max-Age', '86400');
     return res.sendStatus(204);
   }
   next();
