@@ -1,5 +1,6 @@
 const express = require('express');
 const { publicCors, adminCors, jsonErrorHandler } = require('./middleware');
+const { idempotencyMiddleware } = require('../middleware/idempotency.middleware');
 
 const authRoutes = require('../modules/auth/auth.routes');
 const widgetRoutes = require('../modules/widgets/widgets.routes');
@@ -27,6 +28,7 @@ function configureRoutes(app) {
     publicCors,
     express.json({ limit: '10kb' }),
     jsonErrorHandler,
+    idempotencyMiddleware,
     submissionRoutes
   );
 

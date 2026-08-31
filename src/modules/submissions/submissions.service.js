@@ -15,13 +15,25 @@ function formatSubmission(sub) {
   return formatted;
 }
 
+const queue = require('../jobs/queue');
+
 // Fire-and-forget side effect function (simulate webhook/email, never crash response)
-async function triggerSideEffect(submission) {
-  try {
+function triggerSideEffect(submission) {
+  // Dispatch the background job to the queue
+  queue.dispatch(`SEND_WEBHOOK_SUB_${submission.id}`, async () => {
+    // Simulate some work that might fail randomly for testing the queue retries
+    // In production, this would be an actual fetch() webhook or nodemailer transport
+    
+    // For probe 5 testing, if submission data has a specific flag, we throw to simulate failure
+    if (submission.data && submission.data.force_fail) {
+      throw new Error('Simulated webhook failure');
+    }
+
     console.log(`[SIDE EFFECT] New submission ${submission.id} for widget ${submission.widget_id}`);
-  } catch (err) {
-    console.error(`[SIDE EFFECT FAILED] ${err.message}`);
-  }
+    
+    // Simulate webhook latency
+    await new Promise(r => setTimeout(r, 200));
+  });
 }
 
 async function createSubmission(widgetId, data, ip) {

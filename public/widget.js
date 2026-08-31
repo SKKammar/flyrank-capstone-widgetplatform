@@ -377,6 +377,12 @@
         }
       });
 
+      // Generate a unique idempotency key for this submission attempt
+      // This ensures if the user double-clicks or the network retries, it's only saved once.
+      const idempotencyKey = typeof crypto !== 'undefined' && crypto.randomUUID 
+        ? crypto.randomUUID() 
+        : Math.random().toString(36).substring(2) + Date.now().toString(36);
+
       const payload = {
         widget_id: widgetId,
         data: submissionData,
@@ -386,7 +392,8 @@
       fetch(apiBase + '/api/submissions', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey
         },
         body: JSON.stringify(payload)
       })
