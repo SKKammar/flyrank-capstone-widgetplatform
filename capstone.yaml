@@ -1,0 +1,16 @@
+run: npm start
+seed: npm run seed
+base_url: http://localhost:3000
+endpoints:
+  - POST /api/auth/register
+  - POST /api/auth/login
+  - GET /api/widgets
+  - POST /api/widgets
+  - GET /api/widgets/:id
+  - PUT /api/widgets/:id
+  - DELETE /api/widgets/:id
+  - GET /api/widgets/:id/embed
+  - POST /api/submissions
+  - GET /api/submissions/config/:widgetId
+  - GET /api/dashboard/submissions
+  - GET /api/dashboard/stats
