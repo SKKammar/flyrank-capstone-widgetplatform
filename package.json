@@ -10,7 +10,7 @@
     "seed": "knex seed:run",
     "test": "node test/probes.test.js"
   },
-  "keywords": ["widget", "saas", "api", "express", "sqlite", "postgres", "multi-tenant"],
+  "keywords": ["widget", "saas", "api", "express", "sqlite", "multi-tenant"],
   "author": "FlyRank Team",
   "license": "MIT",
   "type": "commonjs",
@@ -23,7 +23,6 @@
     "express-rate-limit": "^8.7.0",
     "jsonwebtoken": "^9.0.3",
     "knex": "^3.3.0",
-    "pg": "^8.23.0",
     "uuid": "^14.0.2",
     "zod": "^4.5.4"
   },
