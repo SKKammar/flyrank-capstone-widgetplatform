@@ -1,7 +1,7 @@
 {
   "name": "flyrank-capstone-widgetplatform",
   "version": "1.0.0",
-  "description": "",
+  "description": "FlyRank Capstone Widget Platform - Multi-tenant embeddable widget API with strict isolation, robust anti-bot protections, and resilient geo-enrichment.",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
@@ -10,9 +10,9 @@
     "seed": "knex seed:run",
     "test": "node test/probes.test.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": ["widget", "saas", "api", "express", "sqlite", "postgres", "multi-tenant"],
+  "author": "FlyRank Team",
+  "license": "MIT",
   "type": "commonjs",
   "dependencies": {
     "bcrypt": "^6.0.0",

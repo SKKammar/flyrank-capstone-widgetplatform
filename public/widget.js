@@ -46,91 +46,131 @@
   const style = document.createElement('style');
   style.textContent = `
     .flyrank-widget-root {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       max-width: 440px;
-      margin: 20px auto;
-      padding: 24px;
+      margin: 0 auto;
+      padding: 32px;
       background: #ffffff;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
-      color: #1e293b;
+      border: 1px solid #f1f5f9;
+      border-radius: 16px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(15, 23, 42, 0.05);
+      color: #0f172a;
       box-sizing: border-box;
+      transition: box-shadow 0.3s ease;
+    }
+    .flyrank-widget-root:hover {
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(15, 23, 42, 0.05);
     }
     .flyrank-widget-root * {
       box-sizing: border-box;
     }
     .flyrank-widget-title {
-      font-size: 1.25rem;
+      font-size: 1.5rem;
       font-weight: 700;
+      letter-spacing: -0.025em;
       margin: 0 0 8px 0;
       color: #0f172a;
     }
     .flyrank-widget-desc {
-      font-size: 0.875rem;
+      font-size: 0.9375rem;
       color: #64748b;
-      margin: 0 0 20px 0;
-      line-height: 1.5;
+      margin: 0 0 24px 0;
+      line-height: 1.6;
     }
     .flyrank-form-group {
-      margin-bottom: 16px;
+      margin-bottom: 20px;
     }
     .flyrank-form-label {
       display: block;
-      font-size: 0.8125rem;
+      font-size: 0.875rem;
       font-weight: 600;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
       color: #334155;
       text-transform: capitalize;
     }
     .flyrank-form-input, .flyrank-form-textarea {
       width: 100%;
-      padding: 10px 14px;
+      padding: 12px 16px;
       border: 1px solid #cbd5e1;
-      border-radius: 8px;
+      border-radius: 10px;
       font-size: 0.9375rem;
       color: #0f172a;
       background-color: #f8fafc;
-      transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .flyrank-form-input:hover, .flyrank-form-textarea:hover {
+      border-color: #94a3b8;
     }
     .flyrank-form-input:focus, .flyrank-form-textarea:focus {
       outline: none;
       background-color: #ffffff;
       border-color: #3b82f6;
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
     }
     .flyrank-form-textarea {
-      min-height: 80px;
+      min-height: 100px;
       resize: vertical;
     }
     .flyrank-submit-btn {
       width: 100%;
-      padding: 12px 18px;
-      background: #2563eb;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 24px;
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
       color: #ffffff;
       border: none;
-      border-radius: 8px;
-      font-size: 0.9375rem;
+      border-radius: 10px;
+      font-size: 1rem;
       font-weight: 600;
       cursor: pointer;
-      transition: background 0.2s, transform 0.1s;
+      box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2), 0 2px 4px -2px rgba(37, 99, 235, 0.2);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    .flyrank-submit-btn:hover {
-      background: #1d4ed8;
+    .flyrank-submit-btn:hover:not(:disabled) {
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3), 0 4px 6px -4px rgba(37, 99, 235, 0.3);
+      transform: translateY(-1px);
+    }
+    .flyrank-submit-btn:active:not(:disabled) {
+      transform: translateY(0);
+      box-shadow: none;
     }
     .flyrank-submit-btn:disabled {
-      opacity: 0.65;
+      background: #94a3b8;
+      box-shadow: none;
       cursor: not-allowed;
+      opacity: 0.8;
+    }
+    .flyrank-spinner {
+      width: 18px;
+      height: 18px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: flyrank-spin 1s ease-in-out infinite;
+    }
+    @keyframes flyrank-spin {
+      to { transform: rotate(360deg); }
     }
     .flyrank-message {
-      margin-top: 14px;
-      padding: 10px 14px;
-      border-radius: 6px;
-      font-size: 0.875rem;
+      margin-top: 16px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 0.9375rem;
+      font-weight: 500;
       display: none;
+      animation: flyrank-fade-in 0.3s ease-out forwards;
+    }
+    @keyframes flyrank-fade-in {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
     }
     .flyrank-message.success {
-      display: block;
+      display: flex;
+      align-items: center;
+      gap: 8px;
       background-color: #ecfdf5;
       color: #065f46;
       border: 1px solid #a7f3d0;
@@ -140,6 +180,19 @@
       background-color: #fef2f2;
       color: #991b1b;
       border: 1px solid #fecaca;
+    }
+    .flyrank-message.success::before {
+      content: "✓";
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      background: #10b981;
+      color: white;
+      border-radius: 50%;
+      font-size: 12px;
+      font-weight: bold;
     }
   `;
   document.head.appendChild(style);
@@ -232,7 +285,7 @@
       msgBox.className = 'flyrank-message';
       msgBox.textContent = '';
       submitBtn.disabled = true;
-      submitBtn.textContent = 'Submitting...';
+      submitBtn.innerHTML = '<span class="flyrank-spinner"></span> Submitting...';
 
       const formData = new FormData(form);
       const submissionData = {};
