@@ -1,4 +1,4 @@
-# FlyRank Widget Platform
+# FlyPlatform
 
 A multi-tenant embeddable website widget platform built with Node.js, Express 5, Knex.js, SQLite (`better-sqlite3`), JWT, bcrypt, and Zod.
 
@@ -10,7 +10,7 @@ The platform supports three distinct, decoupled request paths:
 
 ```
 +----------------------------------------------------------------------------------------------------+
-|                                      FLYRANK PLATFORM ARCHITECTURE                                 |
+|                                      FlyPlatform ARCHITECTURE                                 |
 +----------------------------------------------------------------------------------------------------+
 
   [PATH 1: Platform Owner / Tenant]

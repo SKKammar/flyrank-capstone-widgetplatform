@@ -13,7 +13,7 @@ function configureRoutes(app) {
   app.get(['/', '/api/health', '/health'], (req, res) => {
     res.status(200).json({
       status: 'ok',
-      service: 'FlyRank Widget Platform',
+      service: 'FlyPlatform',
       version: '1.0.0',
       timestamp: new Date().toISOString()
     });
