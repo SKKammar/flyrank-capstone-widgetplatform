@@ -150,25 +150,7 @@ flyrank-capstone-widgetplatform/
 
 ---
 
-## Migration Gotchas: SQLite vs PostgreSQL
-
-When transitioning from SQLite development to PostgreSQL production:
-
-1. **Date Grouping in Dashboard Stats**:
-   - **SQLite**: `strftime('%Y-%m-%d', s.created_at)`
-   - **PostgreSQL**: `to_char(s.created_at, 'YYYY-MM-DD')` (or `DATE_TRUNC('day', s.created_at)`)
-   - *Status in this codebase*: The dashboard controller automatically detects the Knex dialect (`db.client.config.client === 'pg'`) and switches expressions dynamically.
-2. **Boolean Columns**:
-   - SQLite stores booleans as `0` or `1`, whereas PostgreSQL uses native `boolean` (`true`/`false`).
-3. **JSON Fields**:
-   - Knex handles JSON columns transparently, but PostgreSQL uses native `jsonb` indexing while SQLite stores stringified JSON. The codebase safely parses both string and object forms.
-4. **Production Architectural Details**:
-   - **Connection Pooling**: `knexfile.js` configures pool sizes `min: 2, max: 10` for PostgreSQL.
-   - **SSL Handling**: Supports self-signed and cloud certificates automatically when `DB_SSL=true` or when SSL is enabled in `DATABASE_URL`.
-
----
-
-## Quickstart
+## Local Development Quickstart
 
 ### Prerequisites
 - Node.js (v18+)
@@ -200,73 +182,14 @@ npm run seed
 
 ### 4. Start the Platform
 ```bash
-# Production start
 npm start
-
-# Development mode with hot-reload
-npm run dev
 ```
 
 ### 5. Run Verification Probes
+The platform includes an automated test runner that perfectly mimics the capstone evaluator:
 ```bash
 npm test
 ```
-
----
-
-## Deployment Guide (Render, Railway, Docker)
-
-### Option A: Local PostgreSQL via Docker Compose
-
-The easiest way to run the platform locally with PostgreSQL is using Docker Compose:
-
-```bash
-docker compose up --build
-```
-This starts a PostgreSQL 16 database on port `5432` and the Node.js API on port `3000`, automatically running Knex migrations and seeding tenant data. Stop it via `docker compose down`.
-
-### Option B: Deploy to Render.com (Recommended)
-
-1. **Log into [Render Dashboard](https://dashboard.render.com)**.
-2. **Create a PostgreSQL Database** named `flyrank-db` and copy the **Internal Database URL**.
-3. **Create a Web Service** connecting this repository.
-   - **Environment**: `Node`
-   - **Build Command**: `npm install && npm run migrate`
-   - **Start Command**: `npm start`
-4. **Set Environment Variables**:
-   - `NODE_ENV`: `production`
-   - `DATABASE_URL`: *(paste Internal Database URL)*
-   - `DB_SSL`: `true`
-   - `JWT_SECRET`: *(your secure 32+ char secret)*
-   - `BASE_URL`: `https://your-app-name.onrender.com`
-   - `ALLOWED_ADMIN_ORIGIN`: `https://your-vercel-domain.vercel.app` *(Critical for Admin CORS Security)*
-
-### Option C: Deploy to Railway.app
-
-1. Go to [Railway.app](https://railway.app) $\rightarrow$ **New Project** $\rightarrow$ **Deploy from GitHub repo**.
-2. Add a **PostgreSQL** database service to the canvas.
-3. In Web Service settings, add environment variables:
-   - `DATABASE_URL`: `${{Postgres.DATABASE_URL}}`
-   - `NODE_ENV`: `production`
-   - `JWT_SECRET`: *(your 64-character secret)*
-   - `BASE_URL`: `https://${{RAILWAY_PUBLIC_DOMAIN}}`
-   - `ALLOWED_ADMIN_ORIGIN`: `https://your-vercel-domain.vercel.app` *(Critical for Admin CORS Security)*
-4. Set **Build Command**: `npm install && npm run migrate`
-5. Set **Start Command**: `npm start`
-
-### Option D: Deploy the Admin Dashboard (Frontend) to Vercel
-
-Since the frontend is a static Vite application, it should be deployed separately from your backend API for maximum performance.
-
-1. Create a free account on **[Vercel](https://vercel.com/)**.
-2. Click **Add New** $\rightarrow$ **Project** and import this repository.
-3. In the "Configure Project" step:
-   - Expand the **Framework Preset** dropdown and ensure **Vite** is selected.
-   - **CRITICAL STEP**: Edit the **Root Directory**. Click the Edit button and select the `admin-dashboard` folder (since the frontend code lives there, not in the root).
-4. Expand the **Environment Variables** section and add:
-   - **Name**: `VITE_API_BASE`
-   - **Value**: `https://your-backend-app-name.onrender.com` *(Replace this with your actual live Render URL, do NOT include `/api` at the end).*
-5. Click **Deploy**. Vercel will build the frontend and give you a live URL where you can manage your widgets globally!
 
 ---
 
