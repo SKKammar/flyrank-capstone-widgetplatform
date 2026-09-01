@@ -9,7 +9,7 @@ const publicCors = cors({
 
 // Controlled CORS for admin endpoints
 const adminCors = cors({
-  origin: (origin, cb) => cb(null, true),
+  origin: ['http://localhost:3000', 'http://localhost:5501'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-mock-ip', 'x-forwarded-for']

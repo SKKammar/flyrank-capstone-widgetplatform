@@ -220,3 +220,17 @@ npm start
 npx serve test-page -p 5500
 ```
 Visit `http://localhost:5500` in the browser to interact with the rendered form.
+
+---
+
+## Known Limitations
+- Geo enrichment depends on free-tier APIs: ip-api.com (45 req/min) 
+  and ipapi.co (~1,000/day). Heavy load will hit these limits.
+- Email/webhook side effect is simulated via console.log. 
+  A production system would use an SMTP provider or webhook service.
+- SQLite is used for local development. Switch to PostgreSQL by updating 
+  the NODE_ENV and DATABASE_URL in .env — knexfile.js already supports both.
+- No CDN is used. widget.js is served directly from Express with 
+  Cache-Control headers. A production system would front this with a CDN.
+- The admin dashboard requires all three local servers to be running 
+  simultaneously (ports 3000, 5500, 5501).
